@@ -55,7 +55,6 @@ export function UploadZone() {
 
           const id = await musicDB.addSong(newSong);
 
-          // Optimistically update the songs list
           queryClient.setQueryData<Song[]>(['songs'], (oldSongs = []) => [
             ...oldSongs,
             { ...newSong, id }
@@ -65,17 +64,11 @@ export function UploadZone() {
             const newProcessed = prev + 1;
             setProgress((newProcessed * 100) / totalFiles);
 
-            // Check if all files are processed
             if (newProcessed === files.length) {
               setIsUploading(false);
               setProgress(0);
               setTotalFiles(0);
-              //This line was originally inside the handleFileUpload function, but now it is in processFiles
-              //This is because in the original code, the event.target.value = ''; was used to reset the input value after all files were processed.
-              //This is now done in processFiles as both file input and drag-and-drop will use the same logic for processing files.
-              //The event is not available in processFiles, but event.target is specific to the file input event,
-              //So we use the equivalent here, which is resetting the input using the id.
-              document.getElementById('file-upload')?.setAttribute('value','');
+              document.getElementById('file-upload')?.setAttribute('value', '');
             }
 
             return newProcessed;
@@ -100,7 +93,7 @@ export function UploadZone() {
             setIsUploading(false);
             setProgress(0);
             setTotalFiles(0);
-            document.getElementById('file-upload')?.setAttribute('value','');
+            document.getElementById('file-upload')?.setAttribute('value', '');
           }
           return newProcessed;
         });
@@ -132,9 +125,10 @@ export function UploadZone() {
 
   return (
     <div 
-      className="border-2 border-dashed border-border rounded-lg p-8 text-center"
+      className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onClick={triggerFileInput}
     >
       <input
         type="file"
@@ -154,7 +148,7 @@ export function UploadZone() {
         <div className="text-sm text-muted-foreground mt-1">
           {isUploading 
             ? `${processedFiles} of ${totalFiles} files processed`
-            : 'or click button below to upload'}
+            : 'or click anywhere in this area to upload'}
         </div>
 
         {isUploading ? (
@@ -166,7 +160,10 @@ export function UploadZone() {
             variant="outline" 
             className="mt-4" 
             disabled={isUploading}
-            onClick={triggerFileInput}
+            onClick={(e) => {
+              e.stopPropagation(); 
+              triggerFileInput();
+            }}
           >
             Select Files
           </Button>
