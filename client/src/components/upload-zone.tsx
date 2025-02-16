@@ -15,8 +15,7 @@ export function UploadZone() {
   const [totalFiles, setTotalFiles] = useState(0);
   const [processedFiles, setProcessedFiles] = useState(0);
 
-  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+  const processFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
 
     setIsUploading(true);
@@ -71,7 +70,12 @@ export function UploadZone() {
               setIsUploading(false);
               setProgress(0);
               setTotalFiles(0);
-              event.target.value = ''; // Reset file input
+              //This line was originally inside the handleFileUpload function, but now it is in processFiles
+              //This is because in the original code, the event.target.value = ''; was used to reset the input value after all files were processed.
+              //This is now done in processFiles as both file input and drag-and-drop will use the same logic for processing files.
+              //The event is not available in processFiles, but event.target is specific to the file input event,
+              //So we use the equivalent here, which is resetting the input using the id.
+              document.getElementById('file-upload')?.setAttribute('value','');
             }
 
             return newProcessed;
@@ -96,7 +100,7 @@ export function UploadZone() {
             setIsUploading(false);
             setProgress(0);
             setTotalFiles(0);
-            event.target.value = ''; // Reset file input
+            document.getElementById('file-upload')?.setAttribute('value','');
           }
           return newProcessed;
         });
@@ -104,12 +108,34 @@ export function UploadZone() {
     }
   }, [toast, queryClient, totalFiles]);
 
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    processFiles(files);
+  }, [processFiles]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = Array.from(e.dataTransfer.files);
+    processFiles(files);
+  }, [processFiles]);
+
   const triggerFileInput = () => {
     document.getElementById('file-upload')?.click();
   };
 
   return (
-    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+    <div 
+      className="border-2 border-dashed border-border rounded-lg p-8 text-center"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <input
         type="file"
         id="file-upload"
