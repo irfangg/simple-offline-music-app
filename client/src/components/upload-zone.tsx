@@ -95,6 +95,10 @@ export function UploadZone() {
     }
   }, [toast, queryClient, totalFiles]);
 
+  const triggerFileInput = () => {
+    document.getElementById('file-upload')?.click();
+  };
+
   return (
     <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
       <input
@@ -106,10 +110,8 @@ export function UploadZone() {
         onChange={handleFileUpload}
         disabled={isUploading}
       />
-      <label 
-        htmlFor="file-upload" 
-        className={`cursor-pointer ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
-      >
+
+      <div className={`${isUploading ? 'pointer-events-none opacity-50' : ''}`}>
         <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <div className="text-lg font-medium">
           {isUploading ? 'Processing files...' : 'Drop audio files here'}
@@ -117,18 +119,24 @@ export function UploadZone() {
         <div className="text-sm text-muted-foreground mt-1">
           {isUploading 
             ? `${processedFiles} of ${totalFiles} files processed`
-            : 'or click to upload'}
+            : 'or click button below to upload'}
         </div>
+
         {isUploading ? (
           <div className="mt-4 w-full max-w-xs mx-auto">
             <Progress value={progress} className="h-2" />
           </div>
         ) : (
-          <Button variant="outline" className="mt-4" disabled={isUploading}>
+          <Button 
+            variant="outline" 
+            className="mt-4" 
+            disabled={isUploading}
+            onClick={triggerFileInput}
+          >
             Select Files
           </Button>
         )}
-      </label>
+      </div>
     </div>
   );
 }
