@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { musicDB } from '@/lib/db';
 import { useQueryClient } from '@tanstack/react-query';
+import type { Song } from '@shared/schema';
 
 export function UploadZone() {
   const { toast } = useToast();
@@ -15,8 +16,8 @@ export function UploadZone() {
   const [processedFiles, setProcessedFiles] = useState(0);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files?.length) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
 
     setIsUploading(true);
     setTotalFiles(files.length);
@@ -44,25 +45,33 @@ export function UploadZone() {
             audio.onloadedmetadata = resolve;
           });
 
-          await musicDB.addSong({
+          const newSong = {
             title: file.name.replace(/\.[^/.]+$/, ""),
             artist: "Unknown",
             duration: Math.floor(audio.duration),
             fileName: file.name,
             fileType: file.type,
             fileData: base64Data
-          });
+          };
 
-          setProcessedFiles(prev => prev + 1);
-          setProgress((processedFiles + 1) * 100 / totalFiles);
+          const id = await musicDB.addSong(newSong);
+
+          // Optimistically update the songs list
+          queryClient.setQueryData<Song[]>(['songs'], (oldSongs = []) => [
+            ...oldSongs,
+            { ...newSong, id }
+          ]);
+
+          setProcessedFiles(prev => {
+            const newProcessed = prev + 1;
+            setProgress((newProcessed * 100) / totalFiles);
+            return newProcessed;
+          });
 
           toast({
             title: "Success",
             description: `Uploaded ${file.name}`
           });
-
-          // Invalidate the songs query to refresh the playlist
-          queryClient.invalidateQueries({ queryKey: ['songs'] });
         };
 
         reader.readAsDataURL(file);
@@ -77,13 +86,14 @@ export function UploadZone() {
     }
 
     // Reset the upload state when all files are processed
-    if (processedFiles === totalFiles) {
+    if (processedFiles === files.length) {
       setIsUploading(false);
       setProgress(0);
       setTotalFiles(0);
       setProcessedFiles(0);
+      event.target.value = ''; // Reset file input
     }
-  }, [toast, queryClient, totalFiles, processedFiles]);
+  }, [toast, queryClient, totalFiles]);
 
   return (
     <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
