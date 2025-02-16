@@ -65,6 +65,15 @@ export function UploadZone() {
           setProcessedFiles(prev => {
             const newProcessed = prev + 1;
             setProgress((newProcessed * 100) / totalFiles);
+
+            // Check if all files are processed
+            if (newProcessed === files.length) {
+              setIsUploading(false);
+              setProgress(0);
+              setTotalFiles(0);
+              event.target.value = ''; // Reset file input
+            }
+
             return newProcessed;
           });
 
@@ -81,17 +90,17 @@ export function UploadZone() {
           title: "Upload failed",
           description: "Failed to upload audio file"
         });
-        setProcessedFiles(prev => prev + 1);
+        setProcessedFiles(prev => {
+          const newProcessed = prev + 1;
+          if (newProcessed === files.length) {
+            setIsUploading(false);
+            setProgress(0);
+            setTotalFiles(0);
+            event.target.value = ''; // Reset file input
+          }
+          return newProcessed;
+        });
       }
-    }
-
-    // Reset the upload state when all files are processed
-    if (processedFiles === files.length) {
-      setIsUploading(false);
-      setProgress(0);
-      setTotalFiles(0);
-      setProcessedFiles(0);
-      event.target.value = ''; // Reset file input
     }
   }, [toast, queryClient, totalFiles]);
 
