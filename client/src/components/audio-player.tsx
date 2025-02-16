@@ -17,30 +17,59 @@ export function AudioPlayer({ currentSong, onPrevious, onNext }: AudioPlayerProp
   const [volume, setVolume] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Reset state when song changes
   useEffect(() => {
     if (currentSong) {
-      setIsPlaying(true);
+      if (audioRef.current) {
+        audioRef.current.src = currentSong.fileData;
+        audioRef.current.load(); // Explicitly load the new source
+        if (isPlaying) {
+          audioRef.current.play().catch(() => setIsPlaying(false));
+        }
+      }
       setCurrentTime(0);
     }
   }, [currentSong]);
 
+  // Handle audio events
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const updateTime = () => setCurrentTime(audio.currentTime);
-    audio.addEventListener('timeupdate', updateTime);
-    return () => audio.removeEventListener('timeupdate', updateTime);
-  }, []);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      onNext();
+    };
+    const handleError = () => {
+      setIsPlaying(false);
+      console.error('Error playing audio');
+    };
 
-  const togglePlay = () => {
-    if (audioRef.current) {
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+    };
+  }, [onNext]);
+
+  const togglePlay = async () => {
+    if (!audioRef.current) return;
+
+    try {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play();
+        await audioRef.current.play();
       }
       setIsPlaying(!isPlaying);
+    } catch (error) {
+      console.error('Error toggling play state:', error);
+      setIsPlaying(false);
     }
   };
 
@@ -71,10 +100,9 @@ export function AudioPlayer({ currentSong, onPrevious, onNext }: AudioPlayerProp
       <CardContent className="p-6">
         <audio
           ref={audioRef}
-          src={currentSong.fileData}
-          autoPlay
+          preload="auto"
         />
-        
+
         <div className="text-center mb-4">
           <h3 className="text-lg font-semibold">{currentSong.title}</h3>
           <p className="text-sm text-muted-foreground">{currentSong.artist}</p>
@@ -101,7 +129,7 @@ export function AudioPlayer({ currentSong, onPrevious, onNext }: AudioPlayerProp
             >
               <SkipBack className="h-6 w-6" />
             </Button>
-            
+
             <Button
               variant="default"
               size="icon"
@@ -114,7 +142,7 @@ export function AudioPlayer({ currentSong, onPrevious, onNext }: AudioPlayerProp
                 <Play className="h-6 w-6" />
               )}
             </Button>
-            
+
             <Button
               variant="ghost"
               size="icon"
